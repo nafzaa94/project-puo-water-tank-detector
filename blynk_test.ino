@@ -6,13 +6,25 @@
 // Comment this out to disable prints and save space
 #define BLYNK_PRINT Serial
 
-int data = 0;
-
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 
 char auth[] = BLYNK_AUTH_TOKEN;
+
+// ultrasonic sensor
+
+#define TRIG_PIN  D1 // ESP32 pin GIOP26 connected to Ultrasonic Sensor's TRIG pin
+#define ECHO_PIN  D2 // ESP32 pin GIOP25 connected to Ultrasonic Sensor's ECHO pin
+#define DISTANCE_THRESHOLD 50 // centimeters
+
+int leveltank = 15;
+
+int distance = 0;
+
+int datalevel = 0;
+
+float duration_us, distance_cm;
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
@@ -26,14 +38,31 @@ BlynkTimer timer;
 // that you define how often to send data to Blynk App.
 void myTimerEvent()
 {
-  data = random(0, 100);
-  Blynk.virtualWrite(V1, data);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  duration_us = pulseIn(ECHO_PIN, HIGH);
+  // calculate the distance
+  distance_cm = 0.017 * duration_us;
+  distance = distance_cm;
+  datalevel = leveltank - distance;
+  datalevel = map(datalevel, 0 , 15 , 0, 100);
+  
+  // print the value to Serial Monitor
+  Serial.print("distance: ");
+  Serial.print(datalevel);
+  Serial.println(" %");
+  
+  Blynk.virtualWrite(V1, datalevel);
 }
 
 void setup()
 {
   // Debug console
   Serial.begin(9600);
+  pinMode(TRIG_PIN, OUTPUT); // set ESP32 pin to output mode
+  pinMode(ECHO_PIN, INPUT);  // set ESP32 pin to input mode
 
   Blynk.begin(auth, ssid, pass);
   // You can also specify server:
